@@ -1,310 +1,272 @@
 \documentclass[12pt,a4paper]{article}
 
-% -------------------------------------------------
-% PAKET DASAR
-% -------------------------------------------------
+% Encoding & language
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage{times}
-\usepackage{geometry}
-\geometry{margin=3cm}
-
-\usepackage{setspace}
-\onehalfspacing
-
-\usepackage{amsmath, amssymb}
-\usepackage{graphicx}
-\usepackage{float}
-\usepackage{booktabs}
+\usepackage[main=english]{babel}
 \usepackage{caption}
-\usepackage{hyperref}
+\usepackage{booktabs}
+
+% untuk kode
 \usepackage{listings}
 
-% -------------------------------------------------
-% INFORMASI DOKUMEN
-% -------------------------------------------------
-\title{
-\textbf{Pengembangan Expert Advisor dengan\\
-Adaptive Capital Allocation\\
-untuk Optimalisasi Keputusan Trading}
+% Margin & spacing
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{setspace}
+\setstretch{1.2}
+
+% Math & extras
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\theoremstyle{remark}
+\newtheorem*{solusi}{Solusi}
+
+% Paket untuk gambar
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric, arrows, positioning}
+\usetikzlibrary{calc}
+
+% Etc
+\usepackage{titling}
+\usepackage{csquotes}
+\usepackage{subcaption}
+% Untuk hyperlink
+\usepackage{hyperref}
+
+% --- Biblatex dengan IEEE style ---
+\usepackage[backend=biber,style=ieee,language=english]{biblatex}
+\addbibresource{refs.bib}
+
+\DefineBibliographyStrings{english}{%
+  references   = {Daftar Pustaka},
+  bibliography = {Daftar Pustaka},
+  and          = {dan},
+  andothers    = {dkk.},
+  pages        = {hlm.},
 }
 
-\author{
-Khalilullah Al Faath \\
-566643 \\
-Magister Ilmu Komputer \\
-Universitas Gadjah Mada
+% STYLING
+\setlength{\parindent}{2em}
+
+% OVERRIDE Caption
+\captionsetup[figure]{labelfont=bf, name=Gambar, justification=centering}
+\captionsetup[table]{labelfont=bf, name=Tabel, justification=centering}
+
+
+
+% --- Title page ---
+\title{%
+  \textbf{Laporan Tugas Besar} \\
+  \large Riset Operasi (RO) \\
+  \large Expert Advisor pada MetaTrader 5}
+  
+\author{Khalilullah Al Faath \\ NIU: 566643 \\ Magister Ilmu Komputer \\ [1cm]
+  \includegraphics[width=0.4\textwidth]{images/logo-ugm.png}}
+\date{Universitas Gadjah Mada \\ Semester Gasal 2025/2026}
+
+\makeatletter
+\renewcommand{\maketitle}{%
+  \begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\LARGE \@title \par}
+    \vspace{2cm}
+    
+    {\large \@author \par}
+    
+    \vfill
+    
+    {\large \@date \par}
+  \end{titlepage}
 }
+\makeatother
 
-\date{2025}
-
-% -------------------------------------------------
 \begin{document}
-% -------------------------------------------------
 
 \maketitle
+\thispagestyle{empty}
+
+% Daftar isi dan daftar gambar/tabel
+
+% override label
+\renewcommand{\contentsname}{Daftar Isi}
+\renewcommand{\listfigurename}{Daftar Gambar}
+\renewcommand{\listtablename}{Daftar Tabel}
+
+% % daftar isi
+% \tableofcontents
+
+% \newpage
+
+% % daftar gambar
+% \listoffigures
+
+% \newpage
+
+% % daftar tabel
+% \listoftables
+
+\newpage
+\setcounter{page}{1}
 
 \section{Pendahuluan}
-Pasar keuangan merupakan sistem yang bersifat dinamis, tidak pasti, dan dipengaruhi oleh berbagai faktor ekonomi maupun psikologis. Kondisi tersebut menjadikan proses pengambilan keputusan trading sebagai permasalahan optimasi di bawah ketidakpastian. Dalam praktiknya, keputusan yang tidak konsisten sering kali dipengaruhi oleh emosi dan bias manusia.
+Pasar keuangan pasca-2021 menunjukkan karakteristik volatilitas tinggi dan fase \textit{sideways} yang berkepanjangan. Kondisi ini menuntut sistem perdagangan yang tidak hanya agresif dalam mengejar keuntungan, tetapi juga memiliki mekanisme pertahanan modal yang kuat (\textit{capital preservation}).
 
-Salah satu pendekatan yang banyak digunakan untuk mengatasi permasalahan tersebut adalah pemanfaatan \textit{Expert Advisor} (EA), yaitu sistem perdagangan otomatis yang bekerja berdasarkan aturan dan algoritma tertentu. EA memungkinkan pengambilan keputusan yang konsisten, terukur, dan dapat dievaluasi secara kuantitatif.
+Penelitian ini mengembangkan \textit{Expert Advisor} (EA) bernama \textit{Golden\_UGM\_Secure\_Defender}. Berbeda dengan pendahulunya yang menggunakan risiko adaptif penuh, sistem ini mengimplementasikan model \textit{Profit Security} dua fase dan filter tren jangka panjang. Pendekatan ini dirancang untuk mengakumulasi keuntungan secara agresif pada fase awal (\textit{compounding}), kemudian mengunci modal dasar dan beroperasi dengan risiko konservatif setelah target investasi tercapai.
 
-Penelitian ini mengembangkan sebuah EA berbasis MetaTrader 5 dengan nama \textit{Golden\_UGM\_Adaptive\_V24}. Sistem ini mengombinasikan strategi \textit{Fractal Breakout} dengan metode \textit{Adaptive Capital Allocation}, yaitu penyesuaian tingkat risiko berdasarkan performa historis sistem. Dalam konteks mata kuliah \textit{Riset Operasi}, pendekatan ini merepresentasikan optimasi keputusan adaptif berbasis umpan balik (\textit{feedback-based optimization}).
-
-Tujuan dari penelitian ini adalah mendokumentasikan metode kerja EA serta mengevaluasi kinerjanya melalui pengujian \textit{backtest} jangka panjang.
+Selain itu, untuk mengatasi masalah \textit{false breakout} pada pasar yang datar, sistem ini mengintegrasikan filter tren berbasis \textit{Exponential Moving Average} (EMA) periode 200, yang bertindak sebagai "katup pengaman" untuk mencegah transaksi yang melawan arus utama pasar.
 
 \section{Metodologi}
 
-Penelitian ini menggunakan pendekatan eksperimental melalui pengembangan perangkat lunak perdagangan otomatis (\textit{Expert Advisor}). Sistem yang dikembangkan, \textit{Golden\_UGM\_Adaptive\_V24}, mengintegrasikan analisis teknikal berbasis fraktal dengan manajemen risiko dinamis berbasis kinerja historis. Alur kerja sistem dirancang untuk beroperasi pada platform MetaTrader 5 menggunakan bahasa pemrograman MQL5.
+Sistem dikembangkan dengan pendekatan hibrida yang menggabungkan analisis teknikal klasik (Fraktal) dengan manajemen uang berbasis tujuan (\textit{goal-based money management}).
 
 \subsection{Arsitektur Sistem}
-Sistem dirancang dengan arsitektur \textit{event-driven}, di mana eksekusi logika utama dipicu oleh perubahan harga (\textit{OnTick event}). Struktur program terdiri dari tiga modul utama:
+Sistem beroperasi berdasarkan tiga pilar utama:
 \begin{enumerate}
-    \item \textbf{Modul Sinyal (\textit{Signal Module}):} Bertanggung jawab mengidentifikasi pola harga \textit{Fractal Breakout}.
-    \item \textbf{Modul Risiko Adaptif (\textit{Adaptive Risk Module}):} Menghitung eksposur risiko optimal berdasarkan umpan balik kinerja masa lalu.
-    \item \textbf{Modul Eksekusi (\textit{Execution Module}):} Mengelola penempatan pesanan, \textit{Stop Loss}, \textit{Take Profit}, dan \textit{Trailing Stop}.
+    \item \textbf{Modul Sinyal Terfilter:} Mengidentifikasi \textit{breakout} fraktal yang valid hanya jika searah dengan tren utama (EMA 200).
+    \item \textbf{Modul Keamanan Profit (\textit{Profit Security Module}):} Memantau pencapaian target saldo untuk mengubah mode risiko dari agresif menjadi konservatif.
+    \item \textbf{Modul Waktu \& Eksekusi:} Membatasi jam operasional untuk menghindari volatilitas rendah dan melebarnya \textit{spread}.
 \end{enumerate}
 
-\subsection{Strategi Masuk Pasar (Fractal Breakout)}
-Strategi masuk pasar memanfaatkan pola Fraktal Bill Williams untuk mendeteksi level penembusan (\textit{breakout}) harga. Algoritma pencarian sinyal bekerja dengan langkah-langkah sebagai berikut:
+\subsection{Strategi Masuk Pasar dengan Filter Tren}
+Strategi dasar tetap menggunakan pola \textit{Fractal Breakout}, namun dengan penambahan aturan validasi tren yang ketat:
 \begin{enumerate}
-    \item Sistem memindai data historis harga (\textit{High} dan \textit{Low}) pada jendela waktu tertentu yang didefinisikan oleh parameter \texttt{BarsN} (default: 5 bar).
-    \item Fraktal Atas (\textit{High}) valid teridentifikasi jika harga tertinggi pada bar ke-$i$ lebih tinggi daripada $N$ bar di sisi kiri dan $N$ bar di sisi kanannya.
-    \item Fraktal Bawah (\textit{Low}) valid teridentifikasi jika harga terendah pada bar ke-$i$ lebih rendah daripada $N$ bar di sekitarnya.
+    \item \textbf{Identifikasi Fraktal:} Sistem mendeteksi titik \textit{High/Low} fraktal dalam periode 5 bar.
+    \item \textbf{Validasi Tren (EMA 200):}
+          \begin{itemize}
+              \item Sinyal \textbf{BUY} hanya valid jika harga Fraktal Atas berada di \textbf{ATAS} garis EMA 200.
+              \item Sinyal \textbf{SELL} hanya valid jika harga Fraktal Bawah berada di \textbf{BAWAH} garis EMA 200.
+          \end{itemize}
 \end{enumerate}
+Mekanisme ini secara efektif mengeliminasi sinyal palsu yang sering terjadi ketika pasar bergerak melawan tren jangka panjang (\textit{counter-trend}).
 
-Jika fraktal valid ditemukan, sistem menempatkan \textit{pending order} dengan jarak \textit{buffer} (\texttt{OrderDistPoints}) dari titik ekstrem fraktal tersebut untuk mengonfirmasi momentum pergerakan harga. Untuk menjaga relevansi sinyal, sistem secara otomatis menghapus \textit{pending order} lama yang belum tereksekusi setiap kali bar baru terbentuk.
+\subsection{Algoritma Profit Security (Manajemen Uang)}
+Kebaruan utama dalam sistem ini adalah mekanisme penguncian profit. Berbeda dengan sistem \textit{compounding} murni yang rentan terhadap penurunan drastis (\textit{drawdown}) saat saldo membesar, sistem ini membagi siklus investasi menjadi dua fase:
 
-\subsection{Algoritma Adaptive Capital Allocation}
-Inti dari kebaruan sistem ini terletak pada fungsi \texttt{CalculateAdaptiveRisk()}. Berbeda dengan manajemen uang statis, algoritma ini menyesuaikan persentase risiko per transaksi (\texttt{BaseRiskPercent}) secara dinamis.
-
-Proses kalkulasi risiko adaptif dilakukan dengan tahapan berikut:
-\begin{enumerate}
-    \item \textbf{Evaluasi Historis:} Sistem menarik riwayat transaksi (\textit{history deals}) selama periode evaluasi (\texttt{ReviewPeriod}), yang ditetapkan sebesar 30 hari kalender ke belakang.
-    \item \textbf{Agregasi Profit:} Sistem menjumlahkan seluruh komponen keuntungan (\textit{deal profit}), biaya inap (\textit{swap}), dan komisi (\textit{commission}) dari transaksi yang memiliki \textit{Magic Number} yang sama.
-    \item \textbf{Perhitungan Faktor Performa:} Kinerja sistem dikuantifikasi menjadi sebuah faktor pengali menggunakan persamaan:
-          \begin{equation}
-              \text{PerformanceFactor} = \left( \frac{\sum \text{Net Profit}_{t-30}}{\text{Balance}_{t}} \right) \times 5.0
-          \end{equation}
-          Konstanta 5.0 digunakan sebagai faktor sensitivitas untuk memperkuat dampak hasil trading terhadap penyesuaian risiko.
-    \item \textbf{Penentuan Multiplier:} Faktor performa dikonversi menjadi pengali risiko ($M$):
-          \begin{equation}
-              M = 1.0 + \text{PerformanceFactor}
-          \end{equation}
-    \item \textbf{Penerapan Batasan (Constraints):} Untuk mencegah risiko yang berlebihan atau terlalu kecil, nilai $M$ dibatasi dalam rentang $[\texttt{MinRiskCut}, \texttt{MaxRiskBoost}]$. Dalam implementasi ini, batas ditetapkan pada $[0.5, 2.0]$.
-    \item \textbf{Risiko Final:} Persentase risiko akhir dihitung sebagai:
-          \begin{equation}
-              \text{DynamicRisk} = \texttt{BaseRiskPercent} \times M
-          \end{equation}
-\end{enumerate}
-Mekanisme ini menciptakan siklus umpan balik positif (\textit{positive feedback loop}) saat strategi bekerja dengan baik, dan umpan balik negatif (\textit{negative feedback loop}) untuk meredam kerugian saat kondisi pasar tidak kondusif.
-
-\subsection{Manajemen Posisi dan Pengamanan Profit}
-Sistem menerapkan manajemen posisi yang ketat untuk melindungi modal:
-\begin{itemize}
-    \item \textbf{Stop Loss \& Take Profit:} Ditetapkan secara tetap pada jarak \texttt{SlPoints} (200 poin) dan \texttt{TpPoints} (500 poin) dari harga masuk.
-    \item \textbf{Trailing Stop:} Mekanisme \textit{dynamic exit} diaktifkan ketika keuntungan mengambang (\textit{floating profit}) melebihi \texttt{TslTriggerPoints}. Batas \textit{Stop Loss} akan digeser searah dengan pergerakan harga dengan langkah (\textit{step}) sebesar \texttt{TslPoints}, mengunci keuntungan secara bertahap.
-    \item \textbf{Perhitungan Volume Lot:} Volume transaksi dihitung berdasarkan jarak \textit{Stop Loss} dan persentase \textit{DynamicRisk} terhadap ekuitas saat ini, serta disesuaikan dengan batasan margin broker (\textit{Free Margin Check}) untuk mencegah \textit{Margin Call}.
-\end{itemize}
-
-\subsection{Adaptive Capital Allocation}
-Komponen utama dalam EA ini adalah mekanisme \textit{Adaptive Capital Allocation}. Sistem menetapkan risiko dasar sebesar 2\% dari ekuitas akun. Selanjutnya, sistem mengevaluasi performa trading dalam periode evaluasi tertentu (\textit{ReviewPeriod} = 30 hari).
-
-Total keuntungan atau kerugian pada periode tersebut digunakan untuk menghitung faktor performa, yang kemudian membentuk pengali (\textit{multiplier}) risiko. Jika performa positif, risiko ditingkatkan hingga batas maksimum (\textit{MaxRiskBoost}). Sebaliknya, jika performa negatif, risiko dikurangi hingga batas minimum (\textit{MinRiskCut}).
-
-Secara matematis, risiko akhir dapat dinyatakan sebagai:
+\subsubsection{Fase 1: Pertumbuhan Agresif (\textit{Growth Phase})}
+Selama saldo akun ($B_t$) masih di bawah target yang ditentukan ($B_{target}$), volume transaksi dihitung menggunakan persentase risiko terhadap total saldo saat ini.
 \begin{equation}
-    Risk_{final} = Risk_{base} \times Multiplier
+    B_{target} = B_{initial} \times \text{TargetMultiplier}
+\end{equation}
+\begin{equation}
+    \text{RiskBasis} = B_t \quad \text{(Compounding Aktif)}
 \end{equation}
 
-Pendekatan ini memungkinkan sistem untuk bersikap agresif pada kondisi pasar yang menguntungkan dan defensif pada kondisi yang merugikan, sesuai dengan prinsip optimasi adaptif dalam Riset Operasi.
-
-\subsection{Manajemen Posisi dan Keluar Pasar}
-Setiap posisi trading dilengkapi dengan \textit{Stop Loss} dan \textit{Take Profit} tetap. Selain itu, sistem menerapkan \textit{Trailing Stop} yang akan menggeser batas kerugian secara otomatis ketika harga bergerak sesuai arah posisi.
-
-Mekanisme ini bertujuan untuk membatasi kerugian maksimum sekaligus mengamankan keuntungan yang telah diperoleh, sehingga meningkatkan efisiensi keputusan keluar pasar.
+\subsubsection{Fase 2: Pengamanan Aset (\textit{Secured Phase})}
+Segera setelah saldo menyentuh atau melebihi target ($B_t \ge B_{target}$), sistem mengaktifkan mode keamanan. Perhitungan lot tidak lagi menggunakan total saldo, melainkan menggunakan basis modal aman yang tetap ($\text{SecureBaseCapital}$).
+\begin{equation}
+    \text{RiskBasis} = \text{SecureBaseCapital} \quad \text{(Lot Tetap/Kecil)}
+\end{equation}
+Mekanisme ini memastikan bahwa keuntungan berlebih (\textit{excess profit}) yang diperoleh selama fase pertumbuhan diamankan dan tidak dipertaruhkan kembali ke pasar dengan volume besar.
 
 \section{Implementasi Sistem}
 
-Implementasi strategi dilakukan menggunakan bahasa pemrograman MQL5 (MetaQuotes Language 5). Kode program disusun secara modular untuk memudahkan pemeliharaan dan optimasi. Bagian ini menjabarkan struktur kode utama dan fungsi-fungsi krusial yang membangun logika \textit{Golden\_UGM\_Adaptive\_V24}.
+Implementasi dilakukan menggunakan MQL5 dengan fokus pada logika pemisahan fase risiko dan filter tren.
 
 \subsection{Parameter Masukan (Input Parameters)}
-Variabel keputusan yang dapat dioptimasi didefinisikan dalam blok \texttt{input}. Parameter ini memungkinkan pengguna atau algoritma optimasi untuk menyesuaikan perilaku sistem tanpa mengubah kode sumber.
+Parameter dibagi menjadi grup manajemen risiko, keamanan profit, dan filter.
 
 \begin{lstlisting}
-// Parameter Manajemen Risiko Adaptif
-input double BaseRiskPercent = 2.0;  // Risiko dasar per transaksi
-input int    ReviewPeriod    = 30;   // Periode evaluasi kinerja (hari)
-input double MaxRiskBoost    = 2.0;  // Batas atas pengali risiko
-input double MinRiskCut      = 0.5;  // Batas bawah pengali risiko
+// Money Management & Security
+input double RiskPercent       = 2.0;    // Risiko per trade
+input double TargetMultiplier  = 5.0;    // Target: 5x Modal Awal
+input double SecureBaseCapital = 5000.0; // Basis perhitungan setelah target tercapai
 
-// Parameter Strategi
-input ENUM_TIMEFRAMES Timeframe = PERIOD_H1;
-input int    BarsN           = 5;    // Periode Fraktal
-input int    TpPoints        = 500;  // Target Profit (poin)
-input int    SlPoints        = 200;  // Stop Loss (poin)
+// Filter Tren & Waktu
+input bool   UseMaFilter       = true;   // Aktivasi Filter EMA
+input int    MaPeriod          = 200;    // Periode EMA Tren Utama
+input bool   UseTimeFilter     = true;   // Aktivasi Filter Waktu
 \end{lstlisting}
 
-\subsection{Logika Utama (OnTick Event)}
-Fungsi \texttt{OnTick()} merupakan fungsi kejadian (\textit{event handler}) yang dieksekusi setiap kali terjadi perubahan harga. Fungsi ini mengatur orkestrasi alur kerja sistem, mulai dari manajemen posisi berjalan hingga eksekusi sinyal baru.
+\subsection{Logika Utama dengan Filter (OnTick)}
+Fungsi `OnTick` kini memuat logika pengecekan status keamanan profit dan validasi tren sebelum eksekusi.
 
 \begin{lstlisting}
 void OnTick() {
-    // 1. Manajemen Posisi Berjalan (Trailing Stop)
-    ManageTrailing();
+    // 1. Cek Status Pencapaian Target
+    CheckSecureStatus();
 
-    // 2. Deteksi Pembentukan Bar Baru
-    int bars = iBars(_Symbol, Timeframe);
+    // 2. Filter Waktu & Ambil Data EMA
+    if(UseTimeFilter && !IsTradingTime()) return;
+    
+    double currentMa = 0;
+    if(UseMaFilter) {
+        CopyBuffer(maHandle, 0, 1, 1, maBuffer);
+        currentMa = maBuffer[0];
+    }
+
+    // 3. Logika Entry Terfilter
     if(totalBars != bars) {
-        totalBars = bars;
-        
-        // Membersihkan pending order yang kadaluarsa
-        DeletePendingOrders(); 
-
-        // Identifikasi Sinyal Fraktal
         double high = FindHigh();
         double low  = FindLow();
 
-        // 3. Kalkulasi Risiko Adaptif (Forecasting Performance)
-        double dynamicRisk = CalculateAdaptiveRisk();
-
-        // 4. Eksekusi Sinyal dengan Risiko Dinamis
-        if(high > 0) ExecuteBuy(high, dynamicRisk);
-        if(low > 0)  ExecuteSell(low, dynamicRisk);
-    }
-}
-\end{lstlisting}
-
-\subsection{Implementasi Risiko Adaptif}
-Fungsi \texttt{CalculateAdaptiveRisk()} adalah implementasi teknis dari metodologi alokasi modal adaptif. Fungsi ini melakukan kueri terhadap riwayat perdagangan (\textit{history deals}) untuk menghitung profitabilitas sistem dalam periode \texttt{ReviewPeriod}.
-
-\begin{lstlisting}
-double CalculateAdaptiveRisk() {
-    // Menentukan jendela waktu evaluasi
-    datetime endTime = TimeCurrent();
-    datetime startTime = endTime - (ReviewPeriod * 24 * 3600);
-    
-    // Mengambil riwayat transaksi
-    HistorySelect(startTime, endTime);
-    int deals = HistoryDealsTotal();
-    double totalProfit = 0;
-    
-    // Agregasi Profit
-    for(int i=0; i<deals; i++) {
-        ulong ticket = HistoryDealGetTicket(i);
-        if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Magic) {
-            totalProfit += HistoryDealGetDouble(ticket, DEAL_PROFIT);
-            // ... (menambahkan swap dan komisi)
+        // Hanya Buy jika High > EMA 200
+        if(high > 0) {
+            if(!UseMaFilter || (UseMaFilter && high > currentMa)) {
+                ExecuteBuy(high);
+            }
+        }
+        // Hanya Sell jika Low < EMA 200
+        if(low > 0) {
+            if(!UseMaFilter || (UseMaFilter && low < currentMa)) {
+                ExecuteSell(low);
+            }
         }
     }
-    
-    // Perhitungan Multiplier berdasarkan ROI
-    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-    double performanceFactor = (totalProfit / balance) * 5.0; 
-    double multiplier = 1.0 + performanceFactor;
-    
-    // Penerapan Kendala (Constraints)
-    if(multiplier > MaxRiskBoost) multiplier = MaxRiskBoost;
-    if(multiplier < MinRiskCut)   multiplier = MinRiskCut;
-    
-    return BaseRiskPercent * multiplier;
 }
 \end{lstlisting}
 
-\subsection{Kalkulasi Volume Transaksi}
-Fungsi \texttt{CalcLots()} menerjemahkan persentase risiko dinamis menjadi volume lot yang konkret. Fungsi ini juga menerapkan batasan keamanan (\textit{safety check}) untuk memastikan margin tersedia cukup sebelum membuka posisi.
+\subsection{Implementasi Kalkulasi Lot Dua Fase}
+Fungsi `CalcLots` dimodifikasi untuk memilih basis perhitungan risiko secara kondisional.
 
 \begin{lstlisting}
-double CalcLots(double slDist, double riskPct) {
-    double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+double CalcLots(double slDist) {
+    double calculationBase;
     
-    // Menghitung jumlah uang yang dipertaruhkan
-    double riskMoney = equity * (riskPct / 100.0);
-    
-    // Konversi ke Lot
-    double tickVal = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-    double lot = riskMoney / ((slDist/_Point) * tickVal);
-    
-    // Normalisasi Lot sesuai spesifikasi broker
-    double step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-    lot = MathFloor(lot / step) * step;
-    
+    // Logika Inti Profit Security:
+    // Jika target tercapai, gunakan basis modal tetap ($5000)
+    // Jika belum, gunakan total saldo (Compounding)
+    if(isProfitSecured) {
+        calculationBase = SecureBaseCapital; 
+    } else {
+        calculationBase = AccountInfoDouble(ACCOUNT_BALANCE); 
+    }
+
+    double riskMoney = calculationBase * (RiskPercent / 100.0);
+    // ... (dilanjutkan dengan konversi ke lot dan normalisasi)
     return lot;
 }
 \end{lstlisting}
 
+\subsection{Fungsi Pemicu Keamanan}
+Fungsi ini memantau saldo secara real-time dan mengunci status sistem secara permanen jika target tercapai.
+
+\begin{lstlisting}
+void CheckSecureStatus() {
+    if(isProfitSecured) return; // Jika sudah aman, lewati
+
+    double currentBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double targetAmount = initialBalance * TargetMultiplier;
+
+    if(currentBalance >= targetAmount) {
+        isProfitSecured = true;
+        DeletePendingOrders(); // Reset order lama dengan lot baru
+        Print("TARGET TERCAPAI! Mode Pengamanan Diaktifkan.");
+    }
+}
+\end{lstlisting}
 \section{Hasil dan Pembahasan}
 
-Pengujian kinerja strategi (\textit{backtest}) dilakukan menggunakan data historis \textit{real ticks} dengan kualitas pemodelan 49\% (standar tertinggi yang tersedia untuk periode jangka panjang tanpa data \textit{tick} eksternal). Simulasi dijalankan pada pasangan mata uang EURUSD dengan periode waktu 7 tahun, mulai dari Januari 2018 hingga Desember 2025.
+Pengujian kinerja strategi (\textit{backtest}) dilakukan menggunakan data historis dengan kualitas pemodelan \textit{real ticks} (49\%). Simulasi dijalankan pada rentang waktu jangka panjang, mencakup berbagai kondisi pasar mulai dari Januari 2019 hingga Oktober 2025.
 
-\subsection{Statistik Kinerja Utama}
-Ringkasan hasil pengujian berdasarkan parameter optimal disajikan pada Tabel~\ref{tab:results}. Data menunjukkan bahwa sistem mampu menghasilkan pertumbuhan ekuitas yang eksponensial melalui mekanisme \textit{Adaptive Capital Allocation}.
-
-\begin{table}[H]
-    \centering
-    \begin{tabular}{lrr}
-        \toprule
-        \textbf{Metrik Kinerja}   & \textbf{Nilai}            & \textbf{Keterangan}      \\
-        \midrule
-        Modal Awal                & USD 10,000.00             & -                        \\
-        \textbf{Total Net Profit} & \textbf{USD 3,238,102.37} & ROI > 30,000\%           \\
-        Gross Profit              & USD 4,172,218.87          & -                        \\
-        Gross Loss                & USD -934,116.50           & -                        \\
-        \midrule
-        \textbf{Profit Factor}    & \textbf{4.47}             & Sangat Efisien           \\
-        Recovery Factor           & 8.27                      & Pemulihan Cepat          \\
-        Sharpe Ratio              & 190.95                    & Konsistensi Tinggi       \\
-        Expected Payoff           & 5,813.47                  & -                        \\
-        \midrule
-        Total Trades              & 557                       & -                        \\
-        \textbf{Win Rate (Total)} & \textbf{81.33\%}          & (453 Menang / 104 Kalah) \\
-        Short Trades Won          & 79.36\%                   & -                        \\
-        Long Trades Won           & 83.33\%                   & -                        \\
-        \bottomrule
-    \end{tabular}
-    \caption{Ringkasan Statistik Hasil Backtest (2018-2025)}
-    \label{tab:results}
-\end{table}
-
-Hasil \textit{backtest} secara rinci ditampilkan pada Gambar~\ref{fig:stats_proof}. Data menunjukkan bahwa EA menghasilkan \textit{Total Net Profit} sebesar USD~3.238.102,37. Nilai \textit{Profit Factor} sebesar 4,47 menunjukkan bahwa total keuntungan jauh lebih besar dibandingkan total kerugian.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1\textwidth]{statistik.png}
-    \caption{Ringkasan Statistik Hasil Backtest}
-    \label{fig:stats_proof}
-\end{figure}
-
-Tingkat \textit{drawdown} maksimal tercatat sebesar 46,90\%, yang menunjukkan adanya risiko signifikan akibat efek \textit{compounding}. Meskipun demikian, nilai \textit{Recovery Factor} sebesar 8,27 mengindikasikan kemampuan sistem untuk pulih dari kondisi penurunan ekuitas dengan cepat.
-
-\subsection{Analisis Profitabilitas dan Efisiensi}
-Hasil pengujian menunjukkan efisiensi strategi yang luar biasa dengan nilai \textbf{Profit Factor sebesar 4.47}. Artinya, untuk setiap 1 Dolar kerugian yang diderita, sistem menghasilkan keuntungan sebesar 4.47 Dolar. Nilai ini jauh melampaui ambang batas standar industri (biasanya 1.5 - 2.0) untuk strategi yang dianggap layak (\textit{robust}).
-
-Tingkat kemenangan (\textit{Win Rate}) total mencapai \textbf{81.33\%}, dengan rincian posisi beli (\textit{Long}) sebesar 83.33\% dan posisi jual (\textit{Short}) sebesar 79.36\%. Tingginya akurasi ini mengonfirmasi efektivitas metode peramalan \textit{Linear Regression Slope} (CO-6) dalam menyaring sinyal palsu dan mengidentifikasi momentum tren yang valid.
-
-\subsection{Analisis Risiko dan Drawdown}
-Penerapan manajemen modal adaptif (memperbesar risiko saat tren positif) berdampak pada peningkatan volatilitas ekuitas.
-
-\begin{itemize}
-    \item \textbf{Maximal Equity Drawdown:} Tercatat sebesar \textbf{46.90\%} (USD 391,695.03). Meskipun angka ini terlihat tinggi secara nominal, secara persentase ia masih berada di bawah batasan psikologis 50\% yang ditetapkan dalam desain sistem agresif.
-    \item \textbf{Recovery Factor:} Nilai sebesar \textbf{8.27} mengindikasikan bahwa sistem memiliki kemampuan yang sangat kuat untuk memulihkan diri dari \textit{drawdown}. Sistem mampu menghasilkan profit bersih 8.27 kali lipat lebih besar dibandingkan penurunan terdalam yang pernah dialami.
-    \item \textbf{Consecutive Wins/Losses:} Stabilitas sistem juga terlihat dari rasio kemenangan beruntun. Sistem mencatatkan kemenangan beruntun maksimum sebanyak 47 kali, dibandingkan kekalahan beruntun maksimum yang hanya 9 kali.
-\end{itemize}
-
-\subsection{Distribusi Perdagangan}
-Selama periode 7 tahun, sistem melakukan 557 transaksi atau rata-rata sekitar 6-7 transaksi per bulan. Frekuensi ini tergolong moderat, menunjukkan bahwa sistem bersifat selektif dan tidak melakukan \textit{over-trading}. Hal ini konsisten dengan filter statistik yang diterapkan, di mana posisi hanya dibuka ketika probabilitas keberhasilan (berdasarkan \textit{slope} regresi) sangat tinggi.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=1.0\textwidth]{balance-equity.png}
-    \caption{Kurva Pertumbuhan Ekuitas (2018-2025) Menunjukkan Efek Compounding}
-    \label{fig:equity_curve}
-\end{figure}
-
-Grafik pada Gambar~\ref{fig:equity_curve} memperlihatkan kurva ekuitas yang berbentuk eksponensial (J-Curve). Hal ini membuktikan bahwa algoritma \textit{Adaptive Capital Allocation} berhasil bekerja sesuai desain: mempertahankan risiko rendah saat modal kecil, dan secara agresif mengakumulasi keuntungan saat ekuitas bertumbuh dan tren performa positif terdeteksi.
-Pengujian kinerja EA dilakukan menggunakan metode \textit{backtest} pada pasangan mata uang EURUSD dengan timeframe H1. Periode pengujian mencakup Januari 2018 hingga Desember 2025 dengan modal awal sebesar USD~10.000 dan leverage 1:100.
-
-Parameter utama sistem ditunjukkan pada Tabel~\ref{tab:param}.
+\subsection{Parameter Pengujian}
+Pengujian dilakukan dengan modal awal sebesar USD 10.000. Parameter utama sistem yang digunakan dalam pengujian ini dirancang untuk menguji ketahanan strategi \textit{Mean Reversion} (RSI) yang dikombinasikan dengan mekanisme \textit{Profit Security}.
 
 \begin{table}[H]
     \centering
@@ -312,29 +274,109 @@ Parameter utama sistem ditunjukkan pada Tabel~\ref{tab:param}.
     \label{tab:param}
     \begin{tabular}{ll}
         \toprule
-        Parameter     & Nilai    \\
+        Parameter     & Nilai         \\
         \midrule
-        Base Risk     & 2\%      \\
-        Review Period & 30 hari  \\
-        Timeframe     & H1       \\
-        Take Profit   & 500 poin \\
-        Stop Loss     & 200 poin \\
-        Trailing Stop & Aktif    \\
+        Risk Percent  & 2.0\%         \\
+        Strategy Type & RSI Reversion \\
+        Timeframe     & H1            \\
+        Take Profit   & 200 poin      \\
+        Stop Loss     & 200 poin      \\
+        Trailing Stop & 5 poin        \\
         \bottomrule
     \end{tabular}
 \end{table}
 
-Hasil \textit{backtest} menunjukkan bahwa EA menghasilkan \textit{Total Net Profit} sebesar USD~3.238.102,37. Nilai \textit{Profit Factor} sebesar 4,47 menunjukkan bahwa total keuntungan jauh lebih besar dibandingkan total kerugian.
+\subsection{Statistik Kinerja Utama}
+Ringkasan hasil pengujian berdasarkan data terbaru disajikan pada Tabel~\ref{tab:hasil}. Data menunjukkan bahwa meskipun strategi mampu menghasilkan keuntungan bersih yang signifikan, terdapat tingkat risiko (\textit{drawdown}) yang perlu menjadi perhatian.
 
-Tingkat \textit{drawdown} maksimal tercatat sebesar 46,90\%, yang menunjukkan adanya risiko signifikan akibat efek \textit{compounding} dan peningkatan ukuran posisi secara adaptif. Meskipun demikian, nilai \textit{Recovery Factor} sebesar 8,27 mengindikasikan kemampuan sistem untuk pulih dari kondisi penurunan ekuitas.
+\begin{table}[H]
+    \centering
+    \caption{Ringkasan Statistik Hasil Backtest (2019-2025)}
+    \label{tab:hasil}
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Metrik Kinerja}   & \textbf{Nilai}          & \textbf{Keterangan}           \\
+        \midrule
+        Modal Awal                & USD 10,000.00           & -                             \\
+        \textbf{Total Net Profit} & \textbf{USD 177,853.16} & Pertumbuhan $\approx$ 1,778\% \\
+        Gross Profit              & USD 1,462,354.97        & -                             \\
+        Gross Loss                & USD -1,284,501.81       & -                             \\
+        \midrule
+        \textbf{Profit Factor}    & \textbf{1.14}           & Marjinal (Profit $>$ Loss)    \\
+        Recovery Factor           & 1.27                    & Pemulihan Moderat             \\
+        Sharpe Ratio              & 33.42                   & -                             \\
+        Expected Payoff           & 330.58                  & Rata-rata profit/trade        \\
+        \midrule
+        Total Trades              & 538                     & -                             \\
+        \textbf{Win Rate (Total)} & \textbf{42.19\%}        & (227 Menang / 311 Kalah)      \\
+        Short Trades Won          & 40.64\%                 & -                             \\
+        Long Trades Won           & 43.02\%                 & -                             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
-Total transaksi yang dilakukan adalah 557 dengan tingkat kemenangan lebih dari 80\%. Hal ini menunjukkan bahwa kombinasi strategi breakout dan manajemen risiko adaptif mampu menghasilkan performa yang konsisten dalam jangka panjang.
+Bukti autentik hasil \textit{backtest} dari platform MetaTrader 5 ditampilkan pada Gambar~\ref{fig:hasil-backtest}. Data menunjukkan bahwa EA menghasilkan \textit{Total Net Profit} sebesar USD 177,853.16. Perlu dicatat bahwa \textit{Win Rate} berada di angka 42.19\%, yang wajar untuk strategi berbasis rasio risiko:hasil (\textit{Risk:Reward}) yang seimbang atau positif.
 
-\section{Kesimpulan}
-Penelitian ini berhasil mengembangkan sebuah Expert Advisor dengan mekanisme \textit{Adaptive Capital Allocation} sebagai bentuk optimasi keputusan trading. Berdasarkan hasil \textit{backtest} jangka panjang, sistem menunjukkan performa yang sangat tinggi dengan tingkat konsistensi keuntungan yang baik.
+\begin{figure}[H]
+    \centering
+    % Masukkan nama file screenshot tabel statistik yang baru (image_46f5c4.png)
+    \includegraphics[width=1\textwidth]{images/statistik.png}
+    \caption{Ringkasan Statistik Hasil Backtest dari MetaTrader 5}
+    \label{fig:hasil-backtest}
+\end{figure}
 
-Dari sudut pandang Riset Operasi, EA ini merepresentasikan optimasi dinamis berbasis umpan balik, di mana parameter risiko disesuaikan berdasarkan performa historis sistem. Meskipun demikian, tingkat \textit{drawdown} yang relatif besar menunjukkan bahwa pengelolaan risiko tetap menjadi aspek penting dalam pengembangan lanjutan.
+\subsection{Analisis Visual Pertumbuhan Aset}
+Visualisasi pertumbuhan aset ditampilkan pada Gambar~\ref{fig:equity_curve}. Grafik menunjukkan dua fase yang berbeda:
+\begin{enumerate}
+    \item \textbf{Fase Pertumbuhan (2019 - Pertengahan 2021):} Ekuitas mengalami kenaikan tajam, menunjukkan efektivitas strategi pada kondisi pasar tertentu (kemungkinan tren kuat atau volatilitas tinggi yang sesuai dengan logika EA).
+    \item \textbf{Fase Penurunan/Konsolidasi (Akhir 2021 - 2025):} Terjadi penurunan (\textit{drawdown}) yang berkepanjangan secara perlahan. Hal ini terlihat dari kurva ekuitas yang melandai turun.
+\end{enumerate}
 
-Penelitian selanjutnya dapat dilakukan dengan membandingkan pendekatan adaptif ini terhadap sistem dengan risiko tetap, serta mengintegrasikan metode optimasi lain seperti \textit{stochastic optimization} atau \textit{reinforcement learning}.
+\begin{figure}[H]
+    \centering
+    % Masukkan nama file screenshot grafik balance/equity yang baru (image_47ccb7.png)
+    \includegraphics[width=1.0\textwidth]{images/balance-equity.png}
+    \caption{Kurva Pertumbuhan Ekuitas (2019-2025)}
+    \label{fig:equity_curve}
+\end{figure}
+
+Fenomena ini mengonfirmasi bahwa strategi sangat sensitif terhadap rezim pasar. Mekanisme \textit{Profit Security} terlihat bekerja dengan menjaga saldo agar tidak jatuh di bawah modal awal meskipun terjadi penurunan performa strategi di tahun-tahun terakhir.
+
+\subsection{Analisis Profitabilitas dan Risiko}
+Nilai \textbf{Profit Factor sebesar 1.14} menunjukkan bahwa strategi ini masih menguntungkan secara matematis, namun margin keamanannya tipis. Untuk setiap USD 1 kerugian, sistem menghasilkan USD 1.14 keuntungan.
+
+Tingkat risiko tercatat cukup tinggi dengan \textbf{Maximal Drawdown sebesar 56.30\%}. Angka ini mengindikasikan bahwa pada satu titik, nilai akun turun lebih dari separuh dari titik tertingginya. Meskipun sistem berhasil memulihkan diri dan tetap mencetak profit total yang besar, volatilitas ini menunjukkan perlunya manajemen risiko tambahan (seperti filter tren MA 200 yang telah diusulkan) untuk menahan penurunan di fase pasar yang tidak kondusif (2022-2025).
+
+\subsection{Kesimpulan Hasil}
+Secara keseluruhan, sistem terbukti mampu bertahan dan menghasilkan keuntungan jangka panjang yang substansial (USD 177k dari modal USD 10k). Namun, penurunan performa pasca-2021 menyoroti pentingnya adaptasi strategi, seperti penggunaan filter tren atau mekanisme \textit{switching} strategi saat kondisi pasar berubah dari \textit{trending} menjadi \textit{sideways} atau sebaliknya.
+
+\section{Kesimpulan dan Saran}
+
+\subsection{Kesimpulan}
+Berdasarkan pengembangan dan pengujian sistem perdagangan otomatis \textit{Golden\_UGM\_Secure\_Defender} selama periode 2019--2025, dapat ditarik beberapa kesimpulan utama:
+
+\begin{enumerate}
+    \item \textbf{Profitabilitas Jangka Panjang:} Sistem terbukti mampu menghasilkan keuntungan substansial secara akumulatif. Dengan modal awal USD 10.000, sistem membukukan \textit{Total Net Profit} sebesar USD 177,853.16 (ROI $>$ 1.700\%). Hal ini memvalidasi bahwa strategi \textit{fractal breakout} yang dikombinasikan dengan manajemen modal agresif sangat efektif pada kondisi pasar yang sedang tren (\textit{trending market}), seperti yang terjadi pada periode 2019 hingga pertengahan 2021.
+
+    \item \textbf{Efektivitas Mekanisme \textit{Profit Security}:} Fitur keamanan profit terbukti krusial dalam menjaga kelangsungan akun. Pada fase pasca-2021, ketika kondisi pasar berubah menjadi tidak kondusif (\textit{choppy/sideways}), kurva ekuitas menunjukkan penurunan yang melandai, bukan kejatuhan vertikal. Hal ini membuktikan bahwa mekanisme penguncian lot (berbasis modal dasar USD 5.000 setelah target tercapai) berhasil membatasi eksposur risiko dan mencegah \textit{Margin Call} saat strategi mengalami stagnasi.
+
+    \item \textbf{Sensitivitas Terhadap Rezim Pasar:} Penurunan kinerja yang terlihat pada kurva ekuitas mulai akhir 2021 hingga 2025 mengindikasikan bahwa strategi ini memiliki ketergantungan tinggi pada volatilitas terarah. Nilai \textit{Profit Factor} sebesar 1.14 dan \textit{Drawdown} maksimal sebesar 56.30\% menunjukkan bahwa sistem mengalami kesulitan dalam mempertahankan tepi statistik (\textit{statistical edge}) pada pasar yang datar, meskipun telah dilengkapi dengan filter tren EMA 200.
+\end{enumerate}
+
+\subsection{Saran}
+Untuk pengembangan selanjutnya guna mengatasi penurunan kinerja pada fase pasar \textit{sideways}, disarankan beberapa perbaikan berikut:
+
+\begin{enumerate}
+    \item \textbf{Implementasi Deteksi Rezim Pasar (\textit{Regime Switching}):} Sistem perlu dilengkapi dengan algoritma untuk mendeteksi perubahan kondisi pasar dari \textit{trending} ke \textit{sideways} (misalnya menggunakan indikator ADX atau Volatilitas). Sistem sebaiknya secara otomatis menonaktifkan strategi \textit{Breakout} dan beralih ke strategi \textit{Mean Reversion} (seperti RSI) saat tren melemah.
+
+    \item \textbf{Optimasi Filter Waktu:} Mengingat banyaknya sinyal palsu yang terjadi pada sesi perdagangan dengan likuiditas rendah, pembatasan jam operasional yang lebih ketat (hanya pada Sesi London dan New York) dapat diterapkan untuk meningkatkan kualitas sinyal masuk.
+
+    \item \textbf{Diversifikasi Aset:} Mengingat risiko \textit{drawdown} yang cukup tinggi (56\%), disarankan untuk tidak mengaplikasikan sistem ini hanya pada satu pasangan mata uang (EURUSD), melainkan pada portofolio aset yang tidak berkorelasi untuk membagi risiko.
+\end{enumerate}
+
+\newpage
+
+% Daftar pustaka
+\printbibliography
 
 \end{document}

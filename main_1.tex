@@ -1,0 +1,261 @@
+\documentclass[12pt,a4paper]{article}
+
+% Encoding & language
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[main=english]{babel}
+\usepackage{caption}
+\usepackage{booktabs}
+\usepackage{hyperref}
+
+% untuk kode
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Konfigurasi listing kode
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% Margin & spacing
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{setspace}
+\setstretch{1.2}
+
+% Math & extras
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+% Paket untuk gambar
+\usepackage{graphicx}
+\usepackage{float}
+
+% Etc
+\usepackage{titling}
+
+% --- Biblatex (Opsional) ---
+% \usepackage[backend=biber,style=ieee]{biblatex}
+% \addbibresource{refs.bib}
+
+% --- Title page ---
+\title{%
+  \textbf{Laporan Tugas Besar} \\
+  \large Riset Operasi (RO) \\
+  \large Pengembangan EA: Golden V1.7 "Ice Mountain"}
+  
+\author{Khalilullah Al Faath \\ NIU: 566643 \\ Magister Ilmu Komputer \\ [1cm]
+  \includegraphics[width=0.4\textwidth]{images/logo-ugm.png}} % Pastikan file logo ada
+\date{Universitas Gadjah Mada \\ Semester Gasal 2025/2026}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+
+\newpage
+\setcounter{page}{1}
+
+\section{Pendahuluan}
+Dalam perdagangan algoritmik, tantangan terbesar bukan hanya menghasilkan keuntungan, melainkan mempertahankan keuntungan tersebut dari volatilitas pasar yang tak terduga. Banyak sistem perdagangan gagal karena terus menerapkan risiko agresif bahkan setelah target keuntungan tercapai, yang sering kali berujung pada hilangnya seluruh modal (\textit{wipeout}).
+
+Penelitian ini mengembangkan \textit{Expert Advisor} (EA) versi 1.7 dengan nama sandi \textbf{"Ice Mountain"} atau "Gunung Es". Filosofi utama dari strategi ini dianalogikan seperti mendaki gunung: pendakian awal dilakukan dengan agresif untuk mencapai ketinggian (akumulasi profit), namun begitu mencapai "Puncak" (target ROI tertentu), pendaki harus melambat dan menggunakan tali pengaman untuk turun dengan selamat.
+
+Sistem ini mengimplementasikan mekanisme \textit{Dynamic Profit Locking} dan \textit{Defensive Risk Scaling}. Tujuannya adalah mengejar pertumbuhan saldo hingga 500\% (5x modal), lalu secara otomatis mengurangi paparan risiko dan mengaktifkan "rem darurat" (\textit{Hard Stop}) yang bergerak mengikuti saldo tertinggi (\textit{Trailing Equity}), memastikan investor tidak akan pernah kehilangan profit yang telah diamankan.
+
+\section{Metodologi}
+
+Sistem dikembangkan menggunakan bahasa MQL5 dengan pendekatan hibrida: strategi teknikal berbasis Fraktal untuk \textit{entry}, dikombinasikan dengan manajemen uang tingkat lanjut untuk \textit{exit} dan pengendalian risiko.
+
+\subsection{Arsitektur "Ice Mountain"}
+Sistem beroperasi dalam dua fase berbeda berdasarkan pencapaian saldo:
+
+\begin{enumerate}
+    \item \textbf{Fase Pendakian (Aggressive Climb):}
+          \begin{itemize}
+              \item \textbf{Tujuan:} Melipatgandakan modal secepat mungkin.
+              \item \textbf{Risiko:} Menggunakan persentase risiko standar (misal: 2\%) dari saldo berjalan.
+              \item \textbf{Target:} Mencapai 5x Modal Awal ($TargetMultiplier = 5.0$).
+          \end{itemize}
+
+    \item \textbf{Fase Puncak dan Bertahan (Defensive Summit):}
+          \begin{itemize}
+              \item \textbf{Pemicu:} Teraktivasi otomatis saat Saldo $\ge$ Target.
+              \item \textbf{Pengurangan Risiko:} Risiko per transaksi dibagi dua atau lebih ($DefensiveRiskDivisor$).
+              \item \textbf{Jaring Pengaman (Safety Net):} Sistem mencatat saldo tertinggi (\textit{High Water Mark}). Jika ekuitas turun melebihi toleransi (misal: 10\%) dari titik tertinggi tersebut, seluruh posisi ditutup paksa dan robot berhenti total.
+          \end{itemize}
+\end{enumerate}
+
+\subsection{Implementasi Algoritma}
+
+Berikut adalah implementasi logika utama dalam MQL5 yang menangani transisi fase dan pengamanan profit.
+
+\subsubsection{Parameter Masukan Utama}
+\begin{lstlisting}[language=C++]
+input group "Money Management"
+input double RiskPercent      = 2.0;       // Risiko Awal
+input double TargetMultiplier = 5.0;       // Target 5x Modal
+
+input group "Ice Mountain Mode"
+input bool   UseDefensiveMode = true;      // Mode Bertahan
+input double DefensiveRiskDivisor = 2.0;   // Pembagi Risiko (2% -> 1%)
+input double ProfitLockPercent = 10.0;     // Toleransi Penurunan dari Puncak
+\end{lstlisting}
+
+\subsubsection{Logika Pengendalian Alur Uang (Money Flow)}
+Fungsi ini dijalankan setiap \textit{tick} untuk memantau kesehatan akun dan mengeksekusi \textit{hard stop} jika diperlukan.
+
+\begin{lstlisting}[language=C++]
+bool ManageMoneyFlow() {
+    double currentBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+    double currentEquity  = AccountInfoDouble(ACCOUNT_EQUITY);
+    
+    // Update Saldo Tertinggi (High Water Mark)
+    if(currentBalance > highestBalance) {
+        highestBalance = currentBalance;
+    }
+
+    // FASE 1: Deteksi Pencapaian Puncak
+    double targetAmount = initialBalance * TargetMultiplier;
+    if(!isSummitReached && currentBalance >= targetAmount) {
+        isSummitReached = true;
+        Print("SUMMIT REACHED! Entering Defensive Mode.");
+    }
+
+    // FASE 2: Mode Bertahan (Safety Net)
+    if(isSummitReached && UseDefensiveMode) {
+        // Batas aman bergerak naik mengikuti saldo tertinggi
+        double safetyNetLevel = highestBalance * (1.0 - (ProfitLockPercent / 100.0));
+        
+        // Jika Equity jebol ke bawah Safety Net -> CUT LOSS PROFIT & STOP
+        if(currentEquity < safetyNetLevel) {
+            CloseAllPositions();
+            ExpertRemove(); // Matikan EA
+            return true;
+        }
+    }
+    return false;
+}
+\end{lstlisting}
+
+\subsubsection{Kalkulasi Lot Adaptif}
+Ukuran lot disesuaikan secara otomatis. Saat mode defensif aktif, risiko dikurangi secara drastis untuk melindungi modal.
+
+\begin{lstlisting}[language=C++]
+double CalcLots(double slDist) {
+    double effectiveRisk = RiskPercent;
+    
+    // JIKA sudah di puncak, Bagi Resiko (Contoh: 2% jadi 1%)
+    if(isSummitReached && UseDefensiveMode) {
+        effectiveRisk = RiskPercent / DefensiveRiskDivisor;
+    }
+    
+    // ... (Perhitungan konversi ke Lot standar) ...
+    return lot;
+}
+\end{lstlisting}
+
+\section{Hasil dan Pembahasan}
+
+Pengujian dilakukan menggunakan data \textit{real tick} pada MetaTrader 5 dengan modal awal USD 10,000. Strategi ini menunjukkan performa yang sangat stabil dengan karakteristik \textit{high win-rate}.
+
+\subsection{Statistik Kinerja (Berdasarkan Backtest)}
+
+Tabel berikut merangkum hasil pengujian strategi V1.7.
+
+\begin{table}[H]
+    \centering
+    \caption{Ringkasan Hasil Backtest EA Golden V1.7}
+    \label{tab:hasil}
+    \begin{tabular}{lrr}
+        \toprule
+        \textbf{Metrik}                & \textbf{Nilai}          & \textbf{Analisis}    \\
+        \midrule
+        Modal Awal                     & 10,000.00               & -                    \\
+        \textbf{Total Net Profit}      & \textbf{35,735.08}      & \textbf{ROI: 357\%}  \\
+        Gross Profit                   & 65,111.90               & -                    \\
+        Gross Loss                     & -29,376.82              & -                    \\
+        \midrule
+        \textbf{Profit Factor}         & \textbf{2.22}           & Sangat Efisien       \\
+        Recovery Factor                & 6.79                    & Ketahanan Tinggi     \\
+        Sharpe Ratio                   & 126.65                  & Konsistensi Ekstrem  \\
+        \midrule
+        \textbf{Max Drawdown (Equity)} & \textbf{10.32\%}        & Risiko Sangat Rendah \\
+        Total Trades                   & 440                     & Sampel Cukup         \\
+        \textbf{Win Rate (Total)}      & \textbf{$\approx$ 94\%} & Akurasi Tinggi       \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Gambar~\ref{fig:hasil_statistik} berikut menampilkan bukti statistik backtest.
+
+\begin{figure}[H]
+    \includegraphics[width=1.0 \linewidth]{images/statistik-1.png}
+    \caption{Hasil statistik}
+    \label{fig:hasil_statistik}
+\end{figure}
+
+Gambar~\ref{fig:balance-equity} berikut menampilkan grafik balance-equity hasil backtest.
+
+\begin{figure}[H]
+    \includegraphics[width=1.0 \linewidth]{images/balance-equity-1.png}
+    \caption{Grafik Balance-Equity}
+    \label{fig:balance-equity}
+\end{figure}
+
+\subsection{Analisis Performa}
+
+\begin{enumerate}
+    \item \textbf{Profitabilitas vs Risiko:}
+          Sistem berhasil mencetak keuntungan bersih sebesar \textbf{USD 35,735.08} (357\%), mendekati target 4x-5x modal. Yang paling mengesankan adalah pencapaian ini diraih dengan \textit{Drawdown} maksimal hanya \textbf{10.32\%}. Rasio antara keuntungan (357\%) berbanding risiko (10\%) menghasilkan \textit{Recovery Factor} sebesar 6.79, yang mengindikasikan bahwa sistem sangat cepat memulihkan diri dari kerugian kecil.
+
+    \item \textbf{Akurasi (Win Rate):}
+          Berdasarkan data statistik, sistem mencatat tingkat kemenangan yang luar biasa tinggi:
+          \begin{itemize}
+              \item \textbf{Short Trades:} 220 menang ($\approx$ 91\%)
+              \item \textbf{Long Trades:} 210 menang ($\approx$ 97\%)
+          \end{itemize}
+          Tingkat kemenangan >90\% ini disebabkan oleh penggunaan \textit{Trailing Stop} yang sangat ketat (\texttt{TslTriggerPoints = 10}). Meskipun target profit (TP) diset 500 poin, sistem cenderung mengamankan profit kecil (scalping) begitu harga bergerak positif sedikit saja, meminimalkan kemungkinan posisi berbalik arah menjadi rugi.
+
+    \item \textbf{Efektivitas Mode Bertahan:}
+          Rendahnya \textit{Drawdown} (hanya 10\%) memvalidasi efektivitas manajemen risiko V1.7. Strategi "Ice Mountain" berhasil menjaga kurva ekuitas tetap mulus tanpa gejolak penurunan yang tajam, memberikan kenyamanan psikologis bagi investor.
+\end{enumerate}
+
+\section{Kesimpulan}
+
+Pengembangan EA \textit{Golden V1.7 "Ice Mountain"} berhasil menjawab tantangan utama dalam trading otomatis: keseimbangan antara pertumbuhan dan keamanan.
+
+\begin{enumerate}
+    \item \textbf{Mekanisme Hybrid Berhasil:} Penggabungan logika \textit{entry} teknikal dengan manajemen uang "Gunung Es" terbukti efektif. Sistem mampu menghasilkan ROI 357\% dengan risiko yang sangat terkendali (DD 10\%).
+    \item \textbf{Keamanan Modal Terjamin:} Fitur \textit{Safety Net} dan pembagian risiko (\textit{Defensive Divisor}) berfungsi sebagai asuransi otomatis. Sistem tidak membiarkan keuntungan yang sudah didapat hilang kembali ke pasar.
+    \item \textbf{Karakteristik Scalping:} Penggunaan parameter \textit{Trailing Stop} yang agresif mengubah karakter EA menjadi \textit{High-Frequency Scalper} dengan akurasi di atas 90\%, yang sangat cocok untuk kondisi pasar modern yang sering berubah arah (\textit{choppy}).
+\end{enumerate}
+
+Disarankan untuk penerapan \textit{live}, pengguna tetap memantau \textit{spread} broker, karena strategi dengan target pip kecil (akibat trailing stop ketat) sangat sensitif terhadap biaya transaksi.
+
+Kode program ada di \url{https://drive.google.com/file/d/17elbuA7p6rD3KpFzoHQJLbgnXEIFt8kC/view?usp=drive_link} atau 
+
+\end{document}
